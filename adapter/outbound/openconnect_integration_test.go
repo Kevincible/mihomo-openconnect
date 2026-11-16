@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/metacubex/mihomo/component/proxydialer"
+	"github.com/metacubex/mihomo/component/resolver"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/dns"
 	RC "github.com/metacubex/mihomo/rules/common"
@@ -119,7 +120,11 @@ func ocNew(t *testing.T, option OpenConnectOption) *OpenConnect {
 func ocTCP(o *OpenConnect, address string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
-	c, err := o.DialContext(ctx, &C.Metadata{DstIP: netip.MustParseAddr(address), DstPort: 8000})
+	metadata := &C.Metadata{}
+	if err := metadata.SetRemoteAddress(net.JoinHostPort(address, "8000")); err != nil {
+		return err
+	}
+	c, err := o.DialContext(ctx, metadata)
 	if err != nil {
 		return err
 	}
@@ -173,7 +178,7 @@ func ocUDP(o *OpenConnect, address string, dns bool) error {
 		if err = answer.Unpack(buf[:n]); err != nil {
 			return err
 		}
-		if len(answer.Answer) != 1 || !strings.Contains(answer.Answer[0].String(), "192.0.2.42") {
+		if len(answer.Answer) != 1 || !strings.Contains(answer.Answer[0].String(), "192.168.77.1") {
 			return errors.New("unexpected DNS answer")
 		}
 	}
@@ -385,14 +390,23 @@ func testOpenConnectSplitPolicy(t *testing.T) {
 	}
 	r := dns.NewResolver(dns.Config{
 		Main:             []dns.NameServer{{Net: "rcode", Addr: "name_error"}},
+		Default:          []dns.NameServer{{Net: "rcode", Addr: "name_error"}},
 		OpenConnectRules: []C.Rule{rule},
+	})
+	previousDefault, previousProxy := resolver.DefaultResolver, resolver.ProxyServerHostResolver
+	resolver.DefaultResolver, resolver.ProxyServerHostResolver = r.Resolver, r.ProxyResolver
+	t.Cleanup(func() {
+		resolver.DefaultResolver, resolver.ProxyServerHostResolver = previousDefault, previousProxy
 	})
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	query := new(D.Msg).SetQuestion("internal.corp.test.", D.TypeA)
 	answer, err := r.ExchangeContext(ctx, query.Copy())
-	if err != nil || len(answer.Answer) != 1 || !strings.Contains(answer.Answer[0].String(), "192.0.2.42") {
+	if err != nil || len(answer.Answer) != 1 || !strings.Contains(answer.Answer[0].String(), "192.168.77.1") {
 		t.Fatalf("automatic split DNS: answer=%v error=%v", answer, err)
+	}
+	if err := ocTCP(o, "internal.corp.test"); err != nil {
+		t.Fatalf("TCP connection using split DNS: %v", err)
 	}
 	for address, want := range map[string]bool{"192.168.77.1": true, "192.168.77.200": false, "203.0.113.1": false} {
 		if matched, _ := rule.Match(&C.Metadata{DstIP: netip.MustParseAddr(address)}, C.RuleMatchHelper{}); matched != want {

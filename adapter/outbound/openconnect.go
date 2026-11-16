@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/metacubex/mihomo/component/dialer"
+	"github.com/metacubex/mihomo/component/resolver"
 	C "github.com/metacubex/mihomo/constant"
 	oc "github.com/sagernet/sing-openconnect"
 )
@@ -172,7 +173,11 @@ func (o *OpenConnect) DialContext(ctx context.Context, metadata *C.Metadata) (C.
 	if metadata.Resolved() {
 		conn, err = s.device.DialTCP(ctx, "tcp", netip.AddrPort{}, metadata.AddrPort())
 	} else {
-		conn, err = dialer.NewDialer(dialer.WithNetDialer(ipStackNetDialer{stack: s.device})).DialContext(ctx, "tcp", metadata.RemoteAddress())
+		d := dialer.NewDialer(
+			dialer.WithResolver(resolver.DefaultResolver),
+			dialer.WithNetDialer(ipStackNetDialer{stack: s.device}),
+		)
+		conn, err = d.DialContext(ctx, "tcp", metadata.RemoteAddress())
 	}
 	if err != nil {
 		return nil, err

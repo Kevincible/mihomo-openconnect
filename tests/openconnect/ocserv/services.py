@@ -23,7 +23,7 @@ class DNS(socketserver.BaseRequestHandler):
             end += query[end] + 1
         end += 5
         answer = query[:2] + struct.pack('!5H', 0x8180, 1, 1, 0, 0)
-        answer += query[12:end] + b'\xc0\x0c' + struct.pack('!HHIH', 1, 1, 30, 4) + bytes([192, 0, 2, 42])
+        answer += query[12:end] + b'\xc0\x0c' + struct.pack('!HHIH', 1, 1, 30, 4) + bytes([192, 168, 77, 1])
         sock.sendto(answer, self.client_address)
 
 
