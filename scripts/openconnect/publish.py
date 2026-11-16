@@ -5,7 +5,9 @@ import hashlib
 import json
 from pathlib import Path
 import tempfile
-from upstream import find_release, run
+import subprocess
+from urllib.parse import urlencode
+from upstream import api, find_release, run
 
 TARGETS = {(system, arch) for system in ('linux','darwin','windows') for arch in ('amd64','arm64')}
 
@@ -55,23 +57,38 @@ def publish(repo, base, directory):
                         "See BUILD.json in each archive and version-manifest.json for all build inputs. "
                         "Corporate authentication, system TUN and iOS host integration require their own environment validation.\n")
         if not release:
-            command = ['gh','release','create',version,'--repo',repo,'--verify-tag','--draft','--title',version,'--notes-file',str(body)]
-            if lock['channel']=='candidate': command.append('--prerelease')
-            run(*command)
-        release = find_release(repo, version)
-        if release is None:
-            raise RuntimeError('created draft is not visible yet; retry publication')
-        existing = {asset['name'] for asset in release['assets']}
+            # Use the mutation response: a just-created draft may not be indexed by
+            # either the tag endpoint or the releases list yet.
+            release = api(f'repos/{repo}/releases', method='POST', body={
+                'tag_name': version, 'target_commitish': source, 'name': version,
+                'body': body.read_text(), 'draft': True, 'prerelease': lock['channel']=='candidate',
+            })
+        release_id = release['id']
+        print(f'Uploading release {version} by ID {release_id}', flush=True)
+        existing = {asset['name']: asset for asset in release['assets']}
         for path in sorted(directory.iterdir()):
             if not path.is_file(): continue
             if path.name in existing:
-                run('gh','release','download',version,'--repo',repo,'--pattern',path.name,'--dir',temporary)
-                if (Path(temporary)/path.name).read_bytes() != path.read_bytes():
+                asset = existing[path.name]
+                digest = 'sha256:'+hashlib.sha256(path.read_bytes()).hexdigest()
+                if asset.get('digest') == digest and asset.get('state') == 'uploaded':
+                    continue
+                downloaded = Path(temporary)/path.name
+                with downloaded.open('wb') as output:
+                    subprocess.run(['gh','api',f"repos/{repo}/releases/assets/{asset['id']}",
+                                    '-H','Accept: application/octet-stream'], stdout=output, check=True)
+                if downloaded.read_bytes() != path.read_bytes():
                     raise RuntimeError('refusing to overwrite a different release asset: '+path.name)
             else:
-                run('gh','release','upload',version,str(path),'--repo',repo)
-        run('gh','release','edit',version,'--repo',repo,'--draft=false',
-            '--latest='+str(lock['channel']=='stable').lower(), '--prerelease='+str(lock['channel']=='candidate').lower())
+                upload_url = f'https://uploads.github.com/repos/{repo}/releases/{release_id}/assets?'+urlencode({'name':path.name})
+                run('gh','api',upload_url,'--method','POST','--input',str(path),
+                    '-H','Content-Type: application/octet-stream','-H',f'Content-Length: {path.stat().st_size}')
+        published = api(f'repos/{repo}/releases/{release_id}', method='PATCH', body={
+            'draft': False, 'prerelease': lock['channel']=='candidate',
+            'make_latest': str(lock['channel']=='stable').lower(),
+        })
+        if published['draft']:
+            raise RuntimeError('GitHub did not publish the draft')
     print(f'https://github.com/{repo}/releases/tag/{version}')
 
 

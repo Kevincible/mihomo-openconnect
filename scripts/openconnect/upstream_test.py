@@ -99,3 +99,30 @@ class DraftReleaseTest(unittest.TestCase):
         api_mock.return_value = release
         self.assertEqual(find_release('owner/repo', release['tag_name']), release)
         pages_mock.assert_not_called()
+
+
+class PublishMutationResponseTest(unittest.TestCase):
+    @patch('publish.api')
+    @patch('publish.run')
+    @patch('publish.find_release')
+    def test_creation_response_survives_invisible_draft(self, find_mock, run_mock, api_mock):
+        lock = json.loads(Path('upstream.lock.json').read_text())
+        source = 'a' * 40
+        find_mock.return_value = None
+        run_mock.side_effect = [source, source+'\trefs/heads/main', '', '', ''] + ['{}'] * 14
+        api_mock.side_effect = [{'id':123, 'assets':[], 'draft':True}, {'draft':False}]
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for system, arch in TARGETS:
+                name = f"mihomo-openconnect-{lock['release']}-{system}-{arch}"
+                (root/(name+'.json')).write_text(json.dumps({
+                    'target':{'os':system,'arch':arch},'source_commit':source,'inputs':lock}))
+                (root/(name+('.zip' if system=='windows' else '.tar.gz'))).write_bytes(b'fixture')
+            publish('owner/repo', source, root)
+        find_mock.assert_called_once()
+        self.assertEqual(api_mock.call_args_list[0].kwargs['method'], 'POST')
+        self.assertEqual(api_mock.call_args_list[-1].args[0], 'repos/owner/repo/releases/123')
+        self.assertFalse(api_mock.call_args_list[-1].kwargs['body']['draft'])
+        uploads = [call for call in run_mock.call_args_list if call.args[:2] == ('gh','api')]
+        self.assertEqual(len(uploads),14)
+        self.assertTrue(all('/releases/123/assets?' in call.args[2] for call in uploads))

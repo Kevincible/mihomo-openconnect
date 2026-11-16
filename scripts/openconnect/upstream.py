@@ -18,8 +18,11 @@ def run(*args, cwd=None, data=None):
     return subprocess.check_output(args, cwd=cwd, input=data, text=True).strip()
 
 
-def api(endpoint, optional=False):
-    result = subprocess.run(['gh', 'api', endpoint], text=True, capture_output=True)
+def api(endpoint, optional=False, method='GET', body=None):
+    command = ['gh', 'api', endpoint, '--method', method]
+    if body is not None:
+        command.extend(['--input', '-', '-H', 'Content-Type: application/json'])
+    result = subprocess.run(command, input=json.dumps(body) if body is not None else None, text=True, capture_output=True)
     if optional and result.returncode and 'HTTP 404' in result.stderr:
         return None
     if result.returncode:
