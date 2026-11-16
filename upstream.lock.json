@@ -11,7 +11,7 @@
   },
   "go": "1.27.3",
   "channel": "stable",
-  "inputs_digest": "be26019ceca37e2b4616765739de540f55df93f7343f2bf48ae919e2eb784d89",
-  "adapter_commit": "1cecd8bafab979fa4d4680625eeed8f2c86e0028",
-  "release": "v1.19.34-oc.2"
+  "inputs_digest": "db1dc080e8bf605fa2bcbc4d3a587c851eac66bf81b5b7b7b909f400975d4f6b",
+  "adapter_commit": "5e1a5d0559081859b434757fea35f26e7f1a233d",
+  "release": "v1.19.34-oc.3"
 }
