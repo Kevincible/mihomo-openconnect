@@ -21,7 +21,42 @@ proxies:
       mode: gvisor
 ```
 
-Use [the complete example](docs/openconnect/config.example.yaml) to route company DNS and traffic through this outbound. Keep your existing company rules: the adapter does not install server routes into global policy. A disconnected VPN does not fall back to a direct connection.
+## Routing
+
+Use `OPENCONNECT,COMPANY` to match the VPN server's split routes and split DNS domains. Add the following to the proxy configuration above:
+
+```yaml
+proxy-groups:
+  - name: COMPANY
+    type: select
+    proxies:
+      - OPENCONNECT
+
+dns:
+  enable: true
+  nameserver:
+    - 1.1.1.1
+  # Resolve the VPN gateway independently of the VPN connection.
+  proxy-server-nameserver:
+    - 1.1.1.1
+
+rules:
+  - OPENCONNECT,COMPANY
+  - DOMAIN,ad.com,REJECT
+  - MATCH,DIRECT
+```
+
+The rule matches IPv4/IPv6 split include routes and split DNS domains, including their subdomains. Split exclude routes take precedence; excluded destinations continue to the following rules. Rules are evaluated in their configured order. The keyword is supported only in top-level `rules`.
+
+With `dns.enable: true`, split DNS queries automatically use the server-supplied DNS addresses through the VPN. No manual `nameserver-policy` is required; explicit entries take precedence if configured. Other domains use the normal DNS configuration. If `proxy-server-nameserver` is omitted, VPN gateway resolution uses `default-nameserver` independently of the split DNS policy.
+
+`COMPANY` must be an OpenConnect node or a proxy group containing exactly one OpenConnect node. Mixed groups and multiple VPN nodes are not supported by this rule, including multi-node `load-balance` groups. To target the node above directly, use `OPENCONNECT,OPENCONNECT` and omit the `COMPANY` group. Existing load balancing for other rules remains available.
+
+Default routes (`0.0.0.0/0` and `::/0`), DNS search domains and `TunnelAllDNS` are not imported as split policy. Keep explicit company rules for destinations the server does not supply. The first match or automatic DNS lookup starts the VPN and waits for its configuration. If the first configuration cannot be obtained, requests reaching the rule are rejected and automatic DNS lookups fail. Reconnects and invalid updates preserve the last valid policy; valid updates replace routes and DNS together. No OS routes are installed.
+
+See [the complete example](docs/openconnect/config.example.yaml) and [split route/DNS details](docs/openconnect/usage.md#server-supplied-split-routes-and-dns).
+
+## Build
 
 ```sh
 # Use the exact Go version recorded in upstream.lock.json.
