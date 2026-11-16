@@ -195,6 +195,13 @@ func ParseProxy(mapping map[string]any, options ...ProxyOption) (C.Proxy, error)
 			break
 		}
 		proxy, err = outbound.NewTrustTunnel(*trustTunnelOption)
+	case "openconnect":
+		option := &outbound.OpenConnectOption{BasicOption: basicOption}
+		err = decoder.Decode(mapping, option)
+		if err != nil {
+			break
+		}
+		proxy, err = outbound.NewOpenConnect(*option)
 	case "openvpn":
 		openVPNOption := &outbound.OpenVPNOption{BasicOption: basicOption}
 		err = decoder.Decode(mapping, openVPNOption)

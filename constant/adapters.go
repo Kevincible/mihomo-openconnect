@@ -55,6 +55,7 @@ const (
 	ZeroTier
 	EasyTier
 	GostRelay
+	OpenConnect
 )
 
 const (
@@ -232,6 +233,8 @@ func (at AdapterType) String() string {
 		return "TrustTunnel"
 	case ShadowQuic:
 		return "ShadowQuic"
+	case OpenConnect:
+		return "OpenConnect"
 	case OpenVPN:
 		return "OpenVPN"
 	case Tailscale:
