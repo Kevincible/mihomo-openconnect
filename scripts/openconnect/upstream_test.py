@@ -3,8 +3,9 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
-from upstream import select_library, fingerprint, run
+from upstream import select_library, fingerprint, find_release, run
 from publish import publish, TARGETS
 
 
@@ -80,3 +81,21 @@ class PublicationGuardTest(unittest.TestCase):
                     'target':{'os':system,'arch':arch},'source_commit':'wrong','inputs':lock}))
             with self.assertRaisesRegex(RuntimeError,'mixed source'):
                 publish('unused/repo','unused',root)
+
+
+class DraftReleaseTest(unittest.TestCase):
+    @patch('upstream.pages')
+    @patch('upstream.api')
+    def test_draft_not_visible_through_tag_endpoint(self, api_mock, pages_mock):
+        draft = {'tag_name': 'v1.19.34-oc.1', 'draft': True, 'id': 1}
+        api_mock.return_value = None
+        pages_mock.return_value = [draft]
+        self.assertEqual(find_release('owner/repo', draft['tag_name']), draft)
+
+    @patch('upstream.pages')
+    @patch('upstream.api')
+    def test_public_release_does_not_need_draft_scan(self, api_mock, pages_mock):
+        release = {'tag_name': 'v1.19.34-oc.1', 'draft': False, 'id': 1}
+        api_mock.return_value = release
+        self.assertEqual(find_release('owner/repo', release['tag_name']), release)
+        pages_mock.assert_not_called()

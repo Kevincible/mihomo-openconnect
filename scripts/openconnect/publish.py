@@ -5,7 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 import tempfile
-from upstream import api, run
+from upstream import find_release, run
 
 TARGETS = {(system, arch) for system in ('linux','darwin','windows') for arch in ('amd64','arm64')}
 
@@ -30,7 +30,7 @@ def publish(repo, base, directory):
     (directory/'version-manifest.json').write_text(json.dumps({'source_commit':source,'inputs':lock,'builds':manifests},indent=2)+'\n')
     files = sorted(p for p in directory.iterdir() if p.is_file() and p.name != 'SHA256SUMS')
     (directory/'SHA256SUMS').write_text(''.join(f'{hashlib.sha256(p.read_bytes()).hexdigest()}  {p.name}\n' for p in files))
-    release = api(f'repos/{repo}/releases/tags/{version}',optional=True)
+    release = find_release(repo, version)
     if release and not release['draft']:
         raise RuntimeError('release is already published; it is immutable')
     remote_main = run('git','ls-remote','origin','refs/heads/main').split()[0]
@@ -58,7 +58,9 @@ def publish(repo, base, directory):
             command = ['gh','release','create',version,'--repo',repo,'--verify-tag','--draft','--title',version,'--notes-file',str(body)]
             if lock['channel']=='candidate': command.append('--prerelease')
             run(*command)
-        release = api(f'repos/{repo}/releases/tags/{version}')
+        release = find_release(repo, version)
+        if release is None:
+            raise RuntimeError('created draft is not visible yet; retry publication')
         existing = {asset['name'] for asset in release['assets']}
         for path in sorted(directory.iterdir()):
             if not path.is_file(): continue

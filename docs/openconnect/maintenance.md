@@ -2,7 +2,7 @@
 
 `upstream.lock.json` records the Mihomo tag/SHA, sing-openconnect Go version/SHA, tracked branch, Go toolchain and release channel. Published locks also record the adaptation input commit, release number and SHA-256 of the input combination. A release's `version-manifest.json` adds the complete source commit, six platform build configurations and binary hashes. Every archive includes its own `BUILD.json`.
 
-The repository retains Mihomo's original module path and complete source history. Functional edits are concentrated in the OpenConnect files, parser registration, appended adapter enum and module dependencies. A one-line format-string correction in `adapter/provider/override_expr.go` makes upstream pass the newer Go vet check. The original upstream build/release/CMFA workflows are replaced, so this fork does not publish to upstream services.
+The repository retains Mihomo's original module path and complete source history. Functional edits are concentrated in the OpenConnect files, parser registration, appended adapter enum and module dependencies. Small format-string corrections in `adapter/provider/override_expr.go` and `transport/vless/vision/conn.go` make upstream pass the newer Go vet checks. The original upstream build/release/CMFA workflows are replaced, so this fork does not publish to upstream services.
 
 ## Tracking
 

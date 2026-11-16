@@ -13,7 +13,7 @@ The release gates are defined in [Validate](../../.github/workflows/validate.yml
 | Cancellation and concurrency | Eight concurrent dials after a canceled dial, one shared stack, concurrent repeated Close. |
 | Reconnect and configuration | Session restart with unchanged stack, container pause/resume, server restart, address and MTU replacement, old connection closure and new traffic. |
 | Data races | Integration suite runs with `-race`. |
-| Existing Mihomo functions | Adapter/group/provider, configuration/cycle detection, DNS, rules and OpenVPN regression suites on Linux/macOS. |
+| Existing Mihomo functions | Adapter/group/provider, configuration/cycle detection, DNS, rules, OpenVPN, VLESS, Snell, JLS, ShadowTLS, TLSMirror and Hysteria regression suites on Linux/macOS. |
 | Targets | CLI builds for Linux/macOS/Windows amd64 and arm64, plus build without gVisor. |
 | Update/release guards | Git-history tests cover old tags, branch updates, tag promotion, rewritten history, input idempotency, incomplete platform sets and mixed-source artifacts. |
 

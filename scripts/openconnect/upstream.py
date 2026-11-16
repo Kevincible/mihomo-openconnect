@@ -22,13 +22,23 @@ def api(endpoint, optional=False):
     result = subprocess.run(['gh', 'api', endpoint], text=True, capture_output=True)
     if optional and result.returncode and 'HTTP 404' in result.stderr:
         return None
-    result.check_returncode()
+    if result.returncode:
+        raise RuntimeError(f"GitHub API {endpoint}: {result.stderr.strip()}")
     return json.loads(result.stdout)
 
 
 def pages(endpoint):
     result = json.loads(run('gh', 'api', '--paginate', '--slurp', endpoint))
     return [item for page in result for item in page]
+
+
+def find_release(repo, tag):
+    release = api(f'repos/{repo}/releases/tags/{tag}', optional=True)
+    if release is not None:
+        return release
+    # GitHub's tag endpoint can omit drafts; the authenticated list includes them.
+    return next((item for item in pages(f'repos/{repo}/releases?per_page=100')
+                 if item['tag_name'] == tag), None)
 
 
 def stable_version(tag):
@@ -126,7 +136,7 @@ def prepare(args):
     repo = args.repo or os.environ['GITHUB_REPOSITORY']
     if digest == original.get('inputs_digest'):
         version = original['release']
-        release = api(f'repos/{repo}/releases/tags/{version}', optional=True)
+        release = find_release(repo, version)
         if release and not release['draft']:
             emit({'changed': 'false'})
             return

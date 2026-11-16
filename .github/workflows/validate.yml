@@ -47,7 +47,7 @@ jobs:
           test -z "$(gofmt -l adapter/outbound/openconnect*.go adapter/openconnect_test.go)"
           git diff --exit-code -- go.mod go.sum
       - name: Routing, groups, DNS, providers and shared dependency regressions
-        run: go test -mod=readonly -tags with_gvisor ./adapter/... ./component/dialer/... ./component/proxydialer/... ./config ./dns ./rules/... ./transport/openvpn/...
+        run: go test -mod=readonly -tags with_gvisor ./adapter/... ./component/dialer/... ./component/proxydialer/... ./config ./dns ./rules/... ./transport/openvpn/... ./transport/vless/... ./transport/snell/... ./transport/jls/... ./transport/shadowtls/... ./transport/tlsmirror/... ./transport/hysteria/...
       - name: Build without gVisor (configuration reports required build tag)
         run: |
           go build -mod=readonly -o /tmp/mihomo-no-gvisor .
