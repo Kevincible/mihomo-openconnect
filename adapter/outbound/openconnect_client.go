@@ -11,6 +11,8 @@ import (
 	oc "github.com/sagernet/sing-openconnect"
 )
 
+const openConnectPacketQueueLength = 32
+
 type openConnectStack struct {
 	device    ipStack
 	addresses []netip.Prefix
@@ -108,6 +110,15 @@ func (o *OpenConnect) configureStackLocked() (*openConnectStack, error) {
 	o.stack = s
 	if old != nil {
 		_ = old.device.Close()
+		// The library's receive queue spans sessions. Discard its bounded backlog
+		// before new sockets can receive packets, including MTU-only replacements.
+		drainCtx, cancel := context.WithCancel(o.ctx)
+		cancel()
+		for i := 0; i < openConnectPacketQueueLength; i++ {
+			if _, err := o.client.ReadDataPacket(drainCtx); err != nil {
+				break
+			}
+		}
 		log.Infoln("[OpenConnect](%s) tunnel address or MTU changed; previous connections closed", o.Name())
 	}
 	o.workers.Add(1)

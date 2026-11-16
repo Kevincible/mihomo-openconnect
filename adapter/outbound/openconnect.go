@@ -104,7 +104,8 @@ func NewOpenConnect(option OpenConnectOption) (*OpenConnect, error) {
 	o.dialer = option.NewDialer(o.DialOptions())
 	clientOption := oc.ClientOptions{
 		Context: o.ctx, Server: server.String(), Flavor: oc.FlavorAnyConnect,
-		Username: option.Username, Password: option.Password, AuthGroup: option.AuthGroup, Cookie: option.Cookie,
+		QueueLength: openConnectPacketQueueLength,
+		Username:    option.Username, Password: option.Password, AuthGroup: option.AuthGroup, Cookie: option.Cookie,
 		NoUDP: option.DTLS != nil && !*option.DTLS, IPv6Disabled: !option.IPv6,
 		MTU: uint32(option.MTU), DPDInterval: time.Duration(option.DPDInterval) * time.Second,
 		ReconnectTimeout: time.Duration(option.ReconnectTimeout) * time.Second,
