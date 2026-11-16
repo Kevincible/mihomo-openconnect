@@ -10,5 +10,8 @@
     "branch": "dev"
   },
   "go": "1.27.3",
-  "channel": "stable"
+  "channel": "stable",
+  "inputs_digest": "df05fff12ffbc7bfa4b9790c8d832312e3211ab661cecd2654dabfb0fe44ce39",
+  "adapter_commit": "0b11800faca79f61f64244680bad8dc7b0946c40",
+  "release": "v1.19.34-oc.1"
 }
