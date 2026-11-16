@@ -1,0 +1,101 @@
+name: Track upstream and release
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      mihomo:
+        description: Exact stable Mihomo tag (empty checks latest stable release)
+        type: string
+        required: false
+      openconnect:
+        description: Exact sing-openconnect tag or full SHA (empty tracks tags and main)
+        type: string
+        required: false
+permissions:
+  contents: read
+concurrency:
+  group: upstream-release
+  cancel-in-progress: false
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    outputs:
+      changed: ${{ steps.update.outputs.changed }}
+      sha: ${{ steps.update.outputs.sha }}
+      base: ${{ steps.update.outputs.base }}
+      version: ${{ steps.update.outputs.version }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          fetch-depth: 0
+      - id: toolchain
+        run: echo "version=$(python3 -c 'import json; print(json.load(open("upstream.lock.json"))["go"])')" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: ${{ steps.toolchain.outputs.version }}
+      - name: Prepare fixed upstream combination
+        id: update
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GOTOOLCHAIN: local
+          MIHOMO_REF: ${{ inputs.mihomo }}
+          OPENCONNECT_REF: ${{ inputs.openconnect }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          python3 scripts/openconnect/upstream.py --mihomo "$MIHOMO_REF" --openconnect "$OPENCONNECT_REF" --push
+      - name: Record detection result
+        env:
+          CHANGED: ${{ steps.update.outputs.changed }}
+          VERSION: ${{ steps.update.outputs.version }}
+          SOURCE: ${{ steps.update.outputs.sha }}
+        run: |
+          if [ "$CHANGED" = true ]; then
+            echo "Candidate $VERSION at $SOURCE; publication requires all Validate jobs." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Pinned inputs already have a published release; no duplicate release.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Record preparation failure
+        if: failure()
+        run: |
+          echo 'Upstream preparation failed. No default branch, tag or release was replaced. Inspect the failed step and resolve conflicts or dependency incompatibilities before retrying.' >> "$GITHUB_STEP_SUMMARY"
+          git status --short >> "$GITHUB_STEP_SUMMARY"
+  validate:
+    needs: prepare
+    if: needs.prepare.outputs.changed == 'true'
+    uses: ./.github/workflows/validate.yml
+    with:
+      ref: ${{ needs.prepare.outputs.sha }}
+  publish:
+    needs: [prepare, validate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          fetch-depth: 0
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          pattern: cli-*
+          merge-multiple: true
+          path: dist
+      - name: Publish immutable source and binaries
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE_SHA: ${{ needs.prepare.outputs.base }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          python3 scripts/openconnect/publish.py --repo "$GITHUB_REPOSITORY" --base "$BASE_SHA"
+      - name: Record release
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: echo "Published https://github.com/$GITHUB_REPOSITORY/releases/tag/$VERSION" >> "$GITHUB_STEP_SUMMARY"

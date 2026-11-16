@@ -1,101 +1,51 @@
-<h1 align="center">
-  <img src="Meta.png" alt="Meta Kennel" width="200">
-  <br>Meta Kernel<br>
-</h1>
+# mihomo-openconnect
 
-<h3 align="center">Another Mihomo Kernel.</h3>
+Mihomo with a native AnyConnect/OpenConnect outbound, powered by [sing-openconnect](https://github.com/SagerNet/sing-openconnect) and Mihomo's existing gVisor IP stack. Rules, DNS policies, proxy groups, proxy chains and load balancing remain available.
 
-<p align="center">
-  <a href="https://goreportcard.com/report/github.com/MetaCubeX/mihomo">
-    <img src="https://goreportcard.com/badge/github.com/MetaCubeX/mihomo?style=flat-square">
-  </a>
-  <img src="https://img.shields.io/github/go-mod/go-version/MetaCubeX/mihomo/Alpha?style=flat-square">
-  <a href="https://github.com/MetaCubeX/mihomo/releases">
-    <img src="https://img.shields.io/github/release/MetaCubeX/mihomo/all.svg?style=flat-square">
-  </a>
-  <a href="https://github.com/MetaCubeX/mihomo">
-    <img src="https://img.shields.io/badge/release-Meta-00b4f0?style=flat-square">
-  </a>
-</p>
+[![Validate](https://github.com/Kevincible/mihomo-openconnect/actions/workflows/validate.yml/badge.svg)](https://github.com/Kevincible/mihomo-openconnect/actions/workflows/validate.yml)
+[![Track upstream](https://github.com/Kevincible/mihomo-openconnect/actions/workflows/track-upstream.yml/badge.svg)](https://github.com/Kevincible/mihomo-openconnect/actions/workflows/track-upstream.yml)
 
-## Features
-
-- Local HTTP/HTTPS/SOCKS server with authentication support
-- VMess, VLESS, Shadowsocks, Trojan, Snell, TUIC, Hysteria protocol support
-- Built-in DNS server that aims to minimize DNS pollution attack impact, supports DoH/DoT upstream and fake IP.
-- Rules based off domains, GEOIP, IPCIDR or Process to forward packets to different nodes
-- Remote groups allow users to implement powerful rules. Supports automatic fallback, load balancing or auto select node
-  based off latency
-- Remote providers, allowing users to get node lists remotely instead of hard-coding in config
-- Netfilter TCP redirecting. Deploy Mihomo on your Internet gateway with `iptables`.
-- Comprehensive HTTP RESTful API controller
-
-## Dashboard
-
-A web dashboard with first-class support for this project has been created; it can be checked out at [metacubexd](https://github.com/MetaCubeX/metacubexd).
-
-## Configration example
-
-Configuration example is located at [/docs/config.yaml](https://github.com/MetaCubeX/mihomo/blob/Alpha/docs/config.yaml).
-
-## Docs
-
-Documentation can be found in [mihomo Docs](https://wiki.metacubex.one/).
-
-## For development
-
-Requirements:
-[Go 1.20 or newer](https://go.dev/dl/)
-
-Build mihomo:
-
-```shell
-git clone https://github.com/MetaCubeX/mihomo.git
-cd mihomo && go mod download
-go build
-```
-
-Set go proxy if a connection to GitHub is not possible:
-
-```shell
-go env -w GOPROXY=https://goproxy.io,direct
-```
-
-Build with gvisor tun stack:
-
-```shell
-go build -tags with_gvisor
-```
-
-### IPTABLES configuration
-
-Work on Linux OS which supported `iptables`
+Download CLI binaries for macOS, Linux and Windows (arm64/amd64) from [Releases](https://github.com/Kevincible/mihomo-openconnect/releases). Each release includes complete source, SHA256 checksums and build manifests. The module path remains `github.com/metacubex/mihomo`.
 
 ```yaml
-# Enable the TPROXY listener
-tproxy-port: 9898
-
-iptables:
-  enable: true # default is false
-  inbound-interface: eth0 # detect the inbound interface, default is 'lo'
+proxies:
+  - name: OPENCONNECT
+    type: openconnect
+    server: vpn.example.com
+    port: 443
+    username: your-username
+    password: your-password
+    udp: true
+    dtls: true
+    ip-stack:
+      mode: gvisor
 ```
 
-## Debugging
+Use [the complete example](docs/openconnect/config.example.yaml) to route company DNS and traffic through this outbound. Keep your existing company rules: the adapter does not install server routes into global policy. A disconnected VPN does not fall back to a direct connection.
 
-Check [wiki](https://wiki.metacubex.one/api/#debug) to get an instruction on using debug
-API.
+```sh
+# Use the exact Go version recorded in upstream.lock.json.
+go build -mod=readonly -tags with_gvisor -o bin/mihomo-openconnect .
+./bin/mihomo-openconnect -t -f docs/openconnect/config.example.yaml
+```
 
-## Credits
+Configuration is validated without contacting the VPN. A session starts on first use and is shared by connections. Request cancellation does not cancel that session. Address/MTU changes close affected sockets and replace the IP stack; unchanged configurations preserve it. Disabling DTLS still permits TCP, UDP and DNS over TLS.
 
-- [Dreamacro/clash](https://github.com/Dreamacro/clash)
-- [SagerNet/sing-box](https://github.com/SagerNet/sing-box)
-- [riobard/go-shadowsocks2](https://github.com/riobard/go-shadowsocks2)
-- [v2ray/v2ray-core](https://github.com/v2ray/v2ray-core)
-- [WireGuard/wireguard-go](https://github.com/WireGuard/wireguard-go)
-- [yaling888/clash-plus-pro](https://github.com/yaling888/clash)
+- [Configuration, authentication and lifecycle](docs/openconnect/usage.md)
+- [Upstream tracking, reproducible builds and rollback](docs/openconnect/maintenance.md)
+- [Validation and host integration scope](docs/openconnect/validation.md)
+- [Original Mihomo README](docs/openconnect/README.upstream.md)
 
-## License
+## Validation
 
-This software is released under the GPL-3.0 license.
+```sh
+docker build -t mihomo-openconnect-ocserv:test tests/openconnect/ocserv
+OPENCONNECT_INTEGRATION=1 go test -race -tags with_gvisor ./adapter/outbound \
+  -run TestOpenConnectIntegration -count=1 -v -timeout 12m
+```
 
-**In addition, any downstream projects not affiliated with `MetaCubeX` shall not contain the word `mihomo` in their names.**
+The fixture creates temporary credentials and certificates and only publishes its VPN port on loopback. It exercises real ocserv authentication, TCP/UDP/DNS, DTLS and TLS fallback, a gateway proxy chain, restart/outage recovery, address/MTU changes, request cancellation and concurrent close. No company VPN or UI automation is used.
+
+The scheduled workflow checks both upstreams every six hours, pins exact commits and validates before publishing. Ordinary sing-openconnect branch commits produce GitHub prereleases; stable tags and Mihomo stable releases use the stable release channel. Conflicts and failed gates stop publication. See the maintenance guide for permissions and manual reproduction.
+
+License: [GPL-3.0](LICENSE), inherited from Mihomo. This is an independent fork, not an official MetaCubeX or SagerNet release.

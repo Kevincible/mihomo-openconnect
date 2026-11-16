@@ -26,3 +26,7 @@ test/config/cache*
 /output
 .vscode/
 .fleet/
+# OpenConnect release output
+/dist/
+__pycache__/
+*.pyc

@@ -1,0 +1,99 @@
+name: Validate
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Exact source SHA or published tag to reproduce
+        type: string
+        required: false
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: true
+permissions:
+  contents: read
+jobs:
+  regression:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          fetch-depth: 0
+      - id: toolchain
+        run: echo "version=$(python3 -c 'import json; print(json.load(open("upstream.lock.json"))["go"])')" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: ${{ steps.toolchain.outputs.version }}
+      - name: Verify fixed dependencies and formatting
+        run: |
+          go mod download
+          go mod verify
+          test -z "$(gofmt -l adapter/outbound/openconnect*.go adapter/openconnect_test.go)"
+          git diff --exit-code -- go.mod go.sum
+      - name: Routing, groups, DNS, providers and shared dependency regressions
+        run: go test -mod=readonly -tags with_gvisor ./adapter/... ./component/dialer/... ./component/proxydialer/... ./config ./dns ./rules/... ./transport/openvpn/...
+      - name: Build without gVisor (configuration reports required build tag)
+        run: |
+          go build -mod=readonly -o /tmp/mihomo-no-gvisor .
+          go test -mod=readonly ./adapter/outbound -run TestOpenConnectRequiresGVisor
+      - name: Upstream automation failure and idempotency checks
+        run: python3 -m unittest discover -s scripts/openconnect -p '*_test.py' -v
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      GOTOOLCHAIN: local
+      OPENCONNECT_INTEGRATION: '1'
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - id: toolchain
+        run: echo "version=$(python3 -c 'import json; print(json.load(open("upstream.lock.json"))["go"])')" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: ${{ steps.toolchain.outputs.version }}
+      - name: Build isolated ocserv fixture
+        run: docker build -t mihomo-openconnect-ocserv:test tests/openconnect/ocserv
+      - name: Real VPN traffic, authentication, fallback, reconnect and lifecycle
+        run: go test -mod=readonly -race -tags with_gvisor ./adapter/outbound -run TestOpenConnectIntegration -count=1 -v -timeout 12m
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [linux, darwin, windows]
+        arch: [amd64, arm64]
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          fetch-depth: 0
+      - id: toolchain
+        run: echo "version=$(python3 -c 'import json; print(json.load(open("upstream.lock.json"))["go"])')" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: ${{ steps.toolchain.outputs.version }}
+      - name: Build pinned CLI and version manifest
+        run: python3 scripts/openconnect/build.py --os '${{ matrix.os }}' --arch '${{ matrix.arch }}'
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: cli-${{ matrix.os }}-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
