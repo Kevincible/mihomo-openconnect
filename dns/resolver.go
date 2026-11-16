@@ -48,6 +48,8 @@ type Resolver struct {
 	cache                 dnsCache
 	policy                []dnsPolicy
 	defaultResolver       *Resolver
+	openConnect           []*openConnectDNSPolicy
+	openConnectCache      Config
 }
 
 func (r *Resolver) LookupIPPrimaryIPv4(ctx context.Context, host string) (ips []netip.Addr, err error) {
@@ -152,6 +154,9 @@ func (r *Resolver) ResolveECH(ctx context.Context, host string) ([]byte, error) 
 func (r *Resolver) ExchangeContext(ctx context.Context, m *D.Msg) (msg *D.Msg, err error) {
 	if len(m.Question) == 0 {
 		return nil, errors.New("should have one question at least")
+	}
+	if answer, matched, err := r.exchangeOpenConnect(ctx, m); matched {
+		return answer, err
 	}
 	continueFetch := false
 	defer func() {
@@ -393,6 +398,9 @@ func (r *Resolver) Invalid() bool {
 func (r *Resolver) ClearCache() {
 	if r != nil && r.cache != nil {
 		r.cache.Clear()
+		for _, policy := range r.openConnect {
+			policy.clearCache()
+		}
 	}
 }
 
@@ -483,6 +491,7 @@ type Config struct {
 	ProxyServerPolicy    []Policy
 	CacheAlgorithm       string
 	CacheMaxSize         int
+	OpenConnectRules     []C.Rule
 }
 
 func (config Config) newCache() dnsCache {
@@ -602,12 +611,18 @@ func NewResolver(config Config) (rs Resolvers) {
 		policy:      makePolicy(config.Policy),
 	}
 	r.defaultResolver = defaultResolver
+	r.openConnect = newOpenConnectDNSPolicies(config.OpenConnectRules)
+	r.openConnectCache = Config{CacheAlgorithm: config.CacheAlgorithm, CacheMaxSize: config.CacheMaxSize}
 	rs.Resolver = r
 
-	if len(config.ProxyServer) != 0 {
+	proxyServers := config.ProxyServer
+	if len(proxyServers) == 0 && len(r.openConnect) != 0 {
+		proxyServers = config.Default
+	}
+	if len(proxyServers) != 0 {
 		rs.ProxyResolver = &Resolver{
 			ipv6:        config.IPv6,
-			main:        cacheTransform(config.ProxyServer),
+			main:        cacheTransform(proxyServers),
 			cache:       config.newCache(),
 			ipv6Timeout: time.Duration(config.IPv6Timeout) * time.Millisecond,
 			policy:      makePolicy(config.ProxyServerPolicy),
@@ -623,6 +638,8 @@ func NewResolver(config Config) (rs Resolvers) {
 		}
 		if config.DirectFollowPolicy {
 			rs.DirectResolver.policy = r.policy
+			rs.DirectResolver.openConnect = r.openConnect
+			rs.DirectResolver.openConnectCache = r.openConnectCache
 		}
 	}
 

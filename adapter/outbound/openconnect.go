@@ -59,6 +59,7 @@ type OpenConnect struct {
 	err     error
 	stack   *openConnectStack
 	workers sync.WaitGroup
+	policy  openConnectPolicyState
 }
 
 var _ ProxyAdapter = (*OpenConnect)(nil)

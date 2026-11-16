@@ -49,6 +49,11 @@ func ParseRulePayload(ruleRaw string, needTarget bool) (tp, payload, target stri
 	tp = strings.ToUpper(item[0])
 	if len(item) > 1 {
 		switch tp {
+		case "OPENCONNECT":
+			if needTarget {
+				target = item[1]
+				params = item[2:]
+			}
 		case "MATCH":
 			// MATCH doesn't contain payload and params
 			target = item[1]

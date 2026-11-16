@@ -29,9 +29,27 @@ All options live in a `type: openconnect` proxy. See [config.example.yaml](confi
 | `dialer-proxy` | none | Route both gateway TLS and DTLS through a Mihomo proxy or group. |
 | `interface-name`, `routing-mark`, `ip-version`, `tfo`, `mptcp` | Mihomo defaults | Existing underlying Mihomo dialer options. |
 
-Timeout options accept 0 for default and otherwise 1–86400 seconds. The global DNS policy handles application hostname resolution. Configure company DNS with `#OPENCONNECT` to carry queries through the VPN; use an independent `proxy-server-nameserver` for the VPN gateway. Do not point gateway DNS back through the VPN it is trying to establish. Mihomo's proxy cycle validation and the adapter's self-reference check reject cyclic proxy chains.
+Timeout options accept 0 for default and otherwise 1–86400 seconds. The global DNS policy handles application hostname resolution. An explicit company DNS server can use `#OPENCONNECT` to carry queries through that outbound. Keep `proxy-server-nameserver` independent of the VPN it is trying to establish. Mihomo's proxy cycle validation and the adapter's self-reference check reject cyclic proxy chains.
 
-Configure a company group without `DIRECT` fallback. Keep all existing company domain and network rules, including exclusions. The adapter deliberately does not interpret normalized library routes as authoritative routing policy: the library does not expose all route provenance needed for lossless dynamic rules.
+## Server-supplied split routes and DNS
+
+Add a top-level rule targeting an OpenConnect proxy or a group containing exactly one OpenConnect proxy:
+
+```yaml
+rules:
+  - OPENCONNECT,COMPANY
+  - DOMAIN,ad.com,REJECT
+  - DOMAIN-SUFFIX,google.com,auto
+  - MATCH,DIRECT
+```
+
+The rule matches the server's IPv4/IPv6 split include routes and split DNS domains, including their subdomains. Split exclude routes take precedence, including for resolved split DNS domains; excluded destinations continue to the following rules. Rules above `OPENCONNECT` retain their normal priority. The target may contain nested groups, but every path must lead to the same OpenConnect node; mixed groups and multiple VPN nodes are rejected. This keyword is not supported inside logical rules, rule providers or sub-rules.
+
+With `dns.enable: true`, queries for split DNS domains automatically use the server-supplied DNS addresses through that OpenConnect connection. Explicit `nameserver-policy` entries take precedence. Public domains keep the normal DNS configuration. When `proxy-server-nameserver` is omitted, gateway resolution uses `default-nameserver` independently of the automatic policy. Disabling the rule also disables its automatic DNS policy. Fake-IP mode remains supported: the actual hostname lookup when opening the connection uses the same split DNS policy.
+
+The first rule match or automatic DNS lookup starts the VPN and waits for its configuration, bounded by `connect-timeout`; DNS lookups also observe their request deadline. Before the first valid configuration, requests reaching this rule are rejected and automatic DNS lookups fail rather than falling through to public routing/DNS. Reconnects retain the last valid policy; valid updates replace routes and DNS together, even if the tunnel address and MTU do not change. VPN DNS answers have a separate cache which is replaced on policy changes. A VPN DNS failure does not fall back to public DNS. Policies are held in memory, not persisted across configuration reloads or process restarts.
+
+`OPENCONNECT` imports only split routes: it ignores both `0.0.0.0/0` and `::/0`, because the library's public API cannot distinguish explicit default routes from automatically synthesized defaults. Default search domains and `TunnelAllDNS` do not become split DNS matches. Keep explicit rules for full-tunnel routing, unsupported server policy, and any company destinations the server does not supply. Without this keyword, the existing manually configured routing/DNS behavior is unchanged; no OS routes are installed.
 
 ## Session ownership
 

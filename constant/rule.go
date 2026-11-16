@@ -40,6 +40,7 @@ const (
 	AND
 	OR
 	NOT
+	OpenConnectRule
 )
 
 type RuleType int
@@ -118,6 +119,8 @@ func (rt RuleType) String() string {
 		return "OR"
 	case NOT:
 		return "NOT"
+	case OpenConnectRule:
+		return "OpenConnect"
 	default:
 		return "Unknown"
 	}

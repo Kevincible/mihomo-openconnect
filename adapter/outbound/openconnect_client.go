@@ -86,6 +86,7 @@ func (o *OpenConnect) configureStackLocked() (*openConnectStack, error) {
 		return nil, nil
 	}
 	config := o.client.TunnelConfiguration()
+	o.updatePolicyLocked(config)
 	if o.stack.matches(config) {
 		return o.stack, nil
 	}

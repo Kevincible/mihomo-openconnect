@@ -35,17 +35,17 @@ proxy-groups:
     type: select
     proxies: [OPENCONNECT]
 
-# Replace these documentation addresses with your existing company DNS and rules.
-# Keep proxy-server-nameserver independent of the VPN to bootstrap the gateway.
+# Gateway DNS must remain independent of the VPN.
 dns:
   enable: true
   listen: 127.0.0.1:1053
   nameserver: [1.1.1.1]
   proxy-server-nameserver: [1.1.1.1]
-  nameserver-policy:
-    '+.corp.example': '192.0.2.53#OPENCONNECT'
+  # Explicit nameserver-policy entries override automatic split DNS if needed.
+  # nameserver-policy:
+  #   '+.corp.example': '192.0.2.53#OPENCONNECT'
 
 rules:
-  - DOMAIN-SUFFIX,corp.example,COMPANY
-  - IP-CIDR,192.0.2.0/24,COMPANY,no-resolve
+  - OPENCONNECT,COMPANY
+  # Keep any additional company rules that the VPN server does not supply.
   - MATCH,DIRECT

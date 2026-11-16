@@ -173,6 +173,7 @@ type DNS struct {
 	ProxyServerPolicy     []dns.Policy
 	DirectNameServer      []dns.NameServer
 	DirectFollowPolicy    bool
+	OpenConnectRules      []C.Rule
 }
 
 // Profile config
@@ -721,6 +722,7 @@ func ParseRawConfig(rawCfg *RawConfig) (*Config, error) {
 		return nil, err
 	}
 	config.DNS = dnsCfg
+	dnsCfg.OpenConnectRules = openConnectRules(rules)
 
 	err = parseTun(rawCfg.Tun, dnsCfg, config.General)
 	if err != nil {
@@ -1116,6 +1118,9 @@ func parseRules(rulesConfig []string, proxies map[string]C.Proxy, ruleProviders 
 		parsed, parseErr := R.ParseRule(tp, payload, target, params, subRules)
 		if parseErr != nil {
 			return nil, fmt.Errorf("%s[%d] [%s] error: %s", format, idx, line, parseErr.Error())
+		}
+		if err := bindOpenConnectRule(parsed, proxies, format); err != nil {
+			return nil, fmt.Errorf("%s[%d] [%s] error: %w", format, idx, line, err)
 		}
 
 		for _, name := range parsed.ProviderNames() {

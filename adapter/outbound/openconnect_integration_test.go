@@ -28,6 +28,8 @@ import (
 
 	"github.com/metacubex/mihomo/component/proxydialer"
 	C "github.com/metacubex/mihomo/constant"
+	"github.com/metacubex/mihomo/dns"
+	RC "github.com/metacubex/mihomo/rules/common"
 	D "github.com/miekg/dns"
 )
 
@@ -210,6 +212,7 @@ func TestOpenConnectIntegration(t *testing.T) {
 	if os.Getenv("OPENCONNECT_INTEGRATION") != "1" {
 		t.Skip("set OPENCONNECT_INTEGRATION=1 and build tests/openconnect/ocserv")
 	}
+	t.Run("SplitPolicy", testOpenConnectSplitPolicy)
 	t.Run("TLS", func(t *testing.T) {
 		f := newOpenConnectFixture(t, true)
 		option := f.option()
@@ -366,6 +369,62 @@ func TestOpenConnectIntegration(t *testing.T) {
 		// Failure in one outbound must not interfere with a separate valid session.
 		ocTraffic(t, ocNew(t, f.option()), "192.168.77.1")
 	})
+}
+
+func testOpenConnectSplitPolicy(t *testing.T) {
+	f := newOpenConnectFixture(t, true)
+	o := ocNew(t, f.option())
+	proxy := NewAutoCloseProxyAdapter(o)
+	defer proxy.Close()
+	rule, err := RC.NewOpenConnect(o.Name())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = rule.Bind(proxy); err != nil {
+		t.Fatal(err)
+	}
+	r := dns.NewResolver(dns.Config{
+		Main:             []dns.NameServer{{Net: "rcode", Addr: "name_error"}},
+		OpenConnectRules: []C.Rule{rule},
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	query := new(D.Msg).SetQuestion("internal.corp.test.", D.TypeA)
+	answer, err := r.ExchangeContext(ctx, query.Copy())
+	if err != nil || len(answer.Answer) != 1 || !strings.Contains(answer.Answer[0].String(), "192.0.2.42") {
+		t.Fatalf("automatic split DNS: answer=%v error=%v", answer, err)
+	}
+	for address, want := range map[string]bool{"192.168.77.1": true, "192.168.77.200": false, "203.0.113.1": false} {
+		if matched, _ := rule.Match(&C.Metadata{DstIP: netip.MustParseAddr(address)}, C.RuleMatchHelper{}); matched != want {
+			t.Fatalf("split route %s: got %v, want %v", address, matched, want)
+		}
+	}
+	o.mu.Lock()
+	firstStack := o.stack
+	o.mu.Unlock()
+	ocDocker(t, "exec", f.name, "sed", "-i", "s/split-dns = corp.test/split-dns = new.example/; s@route = 192.168.77.0/255.255.255.0@route = 192.168.77.128/255.255.255.128@", "/etc/ocserv/ocserv.conf")
+	ocDocker(t, "restart", f.name)
+	o.client.RestartSession()
+	ocEventually(t, o, "192.168.77.1")
+	policy, err := o.OpenConnectPolicy(ctx)
+	if err != nil || policy.MatchDomain("corp.test") || !policy.MatchDomain("new.example") ||
+		policy.MatchIP(netip.MustParseAddr("192.168.77.1")) || !policy.MatchIP(netip.MustParseAddr("192.168.77.150")) {
+		t.Fatalf("route/DNS-only update was not applied: %v", err)
+	}
+	o.mu.Lock()
+	sameStack := firstStack == o.stack
+	o.mu.Unlock()
+	if !sameStack {
+		t.Fatal("route/DNS-only update replaced the IP stack")
+	}
+	answer, err = r.ExchangeContext(ctx, query.Copy())
+	if err != nil || answer.Rcode != D.RcodeNameError {
+		t.Fatal("old split DNS domain retained its cached VPN answer")
+	}
+	answer, err = r.ExchangeContext(ctx, new(D.Msg).SetQuestion("internal.new.example.", D.TypeA))
+	if err != nil || len(answer.Answer) != 1 {
+		t.Fatalf("new split DNS domain: answer=%v error=%v", answer, err)
+	}
 }
 
 type ocTestAuthenticator struct{ password string }

@@ -30,6 +30,7 @@ class DNS(socketserver.BaseRequestHandler):
 socketserver.ThreadingTCPServer.allow_reuse_address = True
 servers = [socketserver.ThreadingTCPServer(('0.0.0.0', 8000), TCP),
            socketserver.ThreadingUDPServer(('0.0.0.0', 8001), UDP),
+           socketserver.ThreadingUDPServer(('0.0.0.0', 53), DNS),
            socketserver.ThreadingUDPServer(('0.0.0.0', 5353), DNS)]
 for server in servers:
     threading.Thread(target=server.serve_forever, daemon=True).start()

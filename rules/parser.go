@@ -10,11 +10,16 @@ import (
 )
 
 func ParseRule(tp, payload, target string, params []string, subRules map[string][]C.Rule) (parsed C.Rule, parseErr error) {
-	if tp != "MATCH" && payload == "" { // only MATCH allowed doesn't contain payload
+	if tp != "MATCH" && tp != "OPENCONNECT" && payload == "" {
 		return nil, fmt.Errorf("missing subsequent parameters: %s", tp)
 	}
 
 	switch tp {
+	case "OPENCONNECT":
+		if payload != "" || len(params) != 0 {
+			return nil, fmt.Errorf("OPENCONNECT accepts only a target: OPENCONNECT,proxy-or-group")
+		}
+		parsed, parseErr = RC.NewOpenConnect(target)
 	case "DOMAIN":
 		parsed = RC.NewDomain(payload, target)
 	case "DOMAIN-SUFFIX":
