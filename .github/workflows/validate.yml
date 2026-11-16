@@ -37,6 +37,9 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version: ${{ steps.toolchain.outputs.version }}
+          cache-dependency-path: |
+            go.sum
+            scripts/openconnect/build.py
       - name: Verify fixed dependencies and formatting
         run: |
           go mod download
@@ -66,6 +69,9 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version: ${{ steps.toolchain.outputs.version }}
+          cache-dependency-path: |
+            go.sum
+            scripts/openconnect/build.py
       - name: Build isolated ocserv fixture
         run: docker build -t mihomo-openconnect-ocserv:test tests/openconnect/ocserv
       - name: Real VPN traffic, authentication, fallback, reconnect and lifecycle
@@ -90,6 +96,9 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version: ${{ steps.toolchain.outputs.version }}
+          cache-dependency-path: |
+            go.sum
+            scripts/openconnect/build.py
       - name: Build pinned CLI and version manifest
         run: python3 scripts/openconnect/build.py --os '${{ matrix.os }}' --arch '${{ matrix.arch }}'
       - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5

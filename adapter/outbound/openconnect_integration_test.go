@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/tls"
 	"encoding/base32"
 	"encoding/hex"
 	"errors"
@@ -74,7 +75,8 @@ func newOpenConnectFixture(t *testing.T, publishUDP bool) openConnectFixture {
 	})
 	deadline := time.Now().Add(20 * time.Second)
 	for {
-		c, err := net.DialTimeout("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)), 200*time.Millisecond)
+		// Docker can accept TCP before ocserv starts. Wait for the actual TLS server.
+		c, err := tls.DialWithDialer(&net.Dialer{Timeout: 200 * time.Millisecond}, "tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)), &tls.Config{InsecureSkipVerify: true})
 		if err == nil {
 			c.Close()
 			break

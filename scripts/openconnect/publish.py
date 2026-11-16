@@ -4,7 +4,6 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
-import subprocess
 import tempfile
 from upstream import api, run
 
@@ -15,7 +14,7 @@ def publish(repo, base, directory):
     lock = json.loads(Path('upstream.lock.json').read_text())
     source = run('git','rev-parse','HEAD')
     version = lock.get('release')
-    manifests = [json.loads(p.read_text()) for p in directory.glob('mihomo-openconnect-*.json')]
+    manifests = [json.loads(p.read_text()) for p in sorted(directory.glob('mihomo-openconnect-*.json'))]
     if {(m['target']['os'],m['target']['arch']) for m in manifests} != TARGETS or len(manifests) != len(TARGETS):
         raise RuntimeError('release requires all six platform manifests')
     for manifest in manifests:
