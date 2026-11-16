@@ -6,7 +6,7 @@ The repository retains Mihomo's original module path and complete source history
 
 ## Tracking
 
-[Track upstream and release](../../.github/workflows/track-upstream.yml) runs at minute 17 every six hours and can be dispatched manually. It selects the newest stable Mihomo release; sing-openconnect prefers newer stable tags and otherwise follows the configured branch. An older tag cannot downgrade a newer commit. A moved Mihomo tag, rewritten library history, merge conflict, invalid version or dependency error fails the job.
+[Track upstream and release](../../.github/workflows/track-upstream.yml) runs at minute 17 every six hours and can be dispatched manually. It selects the newest stable Mihomo release; sing-openconnect prefers newer stable tags and otherwise follows the configured branch. The initial baseline commit is on sing-openconnect `dev`, so the initial lock tracks `dev` (not its older `main` tip). An older tag cannot downgrade a newer commit. A moved Mihomo tag, rewritten library history, merge conflict, invalid version or dependency error fails the job.
 
 Preparation runs on a uniquely named `automation/upstream-*` branch. A three-way merge retains the new Mihomo history and applies the existing fork changes; incompatible edits stop at the conflict. Only this phase may run `go get`/`go mod tidy`. It pins the resulting dependency version and commits both module files. All validation and release builds use `-mod=readonly` and the locked Go version.
 

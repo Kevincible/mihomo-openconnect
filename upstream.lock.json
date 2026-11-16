@@ -7,7 +7,7 @@
   "openconnect": {
     "version": "v0.1.1-0.20261110063215-cd35f41e8f69",
     "commit": "cd35f41e8f69d4c28ac5f9ac87d13e6419a0cac3",
-    "branch": "main"
+    "branch": "dev"
   },
   "go": "1.27.3",
   "channel": "stable"
