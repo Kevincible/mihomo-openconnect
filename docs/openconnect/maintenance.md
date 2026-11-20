@@ -6,7 +6,7 @@ The repository retains Mihomo's original module path and complete source history
 
 ## Tracking
 
-[Track upstream and release](../../.github/workflows/track-upstream.yml) runs at minute 17 every six hours and can be dispatched manually. It selects the newest stable Mihomo release; sing-openconnect prefers newer stable tags and otherwise follows the configured branch. The initial baseline commit is on sing-openconnect `dev`, so the initial lock tracks `dev` (not its older `main` tip). An older tag cannot downgrade a newer commit. A moved Mihomo tag, rewritten library history, merge conflict, invalid version or dependency error fails the job.
+[Track upstream and release](../../.github/workflows/track-upstream.yml) runs at minute 17 every six hours and can be dispatched manually. It selects the newest stable Mihomo release and the current commit on sing-openconnect's `main` branch, including after a force push. A stable version tag (`vMAJOR.MINOR.PATCH`) at that commit selects the stable channel. A new untagged commit selects the candidate channel. A moved Mihomo tag, merge conflict, invalid version or dependency error fails the job.
 
 Preparation runs on a uniquely named `automation/upstream-*` branch. A three-way merge retains the new Mihomo history and applies the existing fork changes; incompatible edits stop at the conflict. Only this phase may run `go get`/`go mod tidy`. It pins the resulting dependency version and commits both module files. All validation and release builds use `-mod=readonly` and the locked Go version.
 
@@ -21,9 +21,7 @@ One concurrency group serializes tracking and release. Updates made to main duri
 The workflow uses only `GITHUB_TOKEN`, with `contents: write` restricted to preparation/publication; validation is read-only. Enable Actions for the repository. No company VPN secrets or additional PAT are required. Scheduled GitHub jobs can be delayed, and inactive public repositories may have schedules disabled by GitHub; manual dispatch remains available.
 
 ```sh
-gh workflow run track-upstream.yml -R Kevincible/mihomo-openconnect \
-  -f mihomo=v1.19.34 \
-  -f openconnect=cd35f41e8f69d4c28ac5f9ac87d13e6419a0cac3
+gh workflow run track-upstream.yml -R Kevincible/mihomo-openconnect
 
 # Read-only inspection of current upstream choices:
 python3 scripts/openconnect/upstream.py --check --repo Kevincible/mihomo-openconnect

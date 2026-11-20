@@ -39,7 +39,7 @@ class UpstreamHistoryTest(unittest.TestCase):
         head = self.commit('next')
         self.git('update-ref','refs/remotes/origin/main',head)
         self.assertEqual(select_library(self.repo,self.locked),(head,'candidate'))
-        self.git('tag','v0.1.1')
+        self.git('tag', '-a', 'v0.1.1', '-m', 'release')
         self.assertEqual(select_library(self.repo,self.locked),(head,'stable'))
         self.locked['commit'] = head
         self.assertEqual(select_library(self.repo,self.locked,current_channel='candidate'),(head,'stable'))
@@ -47,10 +47,15 @@ class UpstreamHistoryTest(unittest.TestCase):
         self.git('update-ref','refs/remotes/origin/main',next_head)
         self.assertEqual(select_library(self.repo,self.locked),(next_head,'candidate'))
 
-    def test_rewritten_branch_fails_closed(self):
-        self.git('update-ref','refs/remotes/origin/main',self.old)
-        with self.assertRaisesRegex(RuntimeError,'history changed'):
-            select_library(self.repo,self.locked)
+    def test_main_head_is_selected_when_locked_commit_is_missing(self):
+        self.locked['commit'] = 'f' * 40
+        self.assertEqual(select_library(self.repo, self.locked), (self.current, 'candidate'))
+
+    def test_tag_on_another_branch_does_not_override_main(self):
+        self.git('switch', '-qc', 'dev')
+        self.commit('dev release')
+        self.git('tag', 'v0.2.0')
+        self.assertEqual(select_library(self.repo, self.locked), (self.current, None))
 
     def test_input_digest_ignores_release_state_but_detects_code(self):
         previous = os.getcwd()

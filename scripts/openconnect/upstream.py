@@ -69,21 +69,17 @@ def select_library(repo, locked, explicit='', current_channel='stable'):
             raise ValueError('openconnect_ref must be a full SHA or exact version tag')
         sha = run('git', '-C', str(repo), 'rev-parse', explicit+'^{commit}')
         return sha, 'stable' if stable_version(explicit) else 'candidate'
-    tags = run('git', '-C', str(repo), 'tag').splitlines()
-    for tag in sorted((t for t in tags if stable_version(t)), key=stable_version, reverse=True):
-        sha = run('git', '-C', str(repo), 'rev-parse', tag+'^{commit}')
-        # An old release tag must not downgrade a newer pinned commit.
-        if ancestor(repo, current, sha) and (sha != current or current_channel != 'stable'):
-            return sha, 'stable'
     branch = locked['branch']
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9/._-]*', branch):
         raise ValueError('invalid tracked branch')
-    head = run('git', '-C', str(repo), 'rev-parse', 'origin/'+branch+'^{commit}')
-    if head != current and ancestor(repo, current, head):
+    head = run('git', '-C', str(repo), 'rev-parse', 'refs/remotes/origin/'+branch+'^{commit}')
+    tags = run('git', '-C', str(repo), 'tag', '--points-at', head).splitlines()
+    has_stable_tag = any(stable_version(tag) for tag in tags)
+    if has_stable_tag and (head != current or current_channel != 'stable'):
+        return head, 'stable'
+    if head != current:
         return head, 'candidate'
-    if head != current and not ancestor(repo, current, head):
-        raise RuntimeError('sing-openconnect branch history changed; refusing automatic rollback')
-    return current, None
+    return head, None
 
 
 def emit(values):

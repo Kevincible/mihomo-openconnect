@@ -9,7 +9,7 @@ on:
         type: string
         required: false
       openconnect:
-        description: Exact sing-openconnect tag or full SHA (empty tracks tags and the locked branch)
+        description: Exact sing-openconnect tag or full SHA (defaults to the latest commit on main)
         type: string
         required: false
 permissions:

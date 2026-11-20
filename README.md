@@ -81,6 +81,6 @@ OPENCONNECT_INTEGRATION=1 go test -race -tags with_gvisor ./adapter/outbound \
 
 The fixture creates temporary credentials and certificates and only publishes its VPN port on loopback. It exercises real ocserv authentication, TCP/UDP/DNS, DTLS and TLS fallback, a gateway proxy chain, restart/outage recovery, address/MTU changes, request cancellation and concurrent close. No company VPN or UI automation is used.
 
-The scheduled workflow checks both upstreams every six hours, pins exact commits and validates before publishing. Ordinary sing-openconnect branch commits produce GitHub prereleases; stable tags and Mihomo stable releases use the stable release channel. Conflicts and failed gates stop publication. See the maintenance guide for permissions and manual reproduction.
+Every six hours the scheduled workflow selects the latest stable Mihomo release and the latest commit on sing-openconnect's `main` branch. It pins both commits and validates them before publishing. A new untagged sing-openconnect commit produces a GitHub prerelease. A stable version tag on the branch tip selects the stable release channel. See the maintenance guide for permissions and manual reproduction.
 
 License: [GPL-3.0](LICENSE), inherited from Mihomo. This is an independent fork, not an official MetaCubeX or SagerNet release.
