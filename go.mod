@@ -54,7 +54,7 @@ require (
 	github.com/openacid/low v0.1.21
 	github.com/rasky/go-lzo v0.0.0-20200203143853-96a758eda86e
 	github.com/sagernet/sing v0.8.12-0.20260702081104-2ded2af32d3d
-	github.com/sagernet/sing-openconnect v0.1.1-0.20261110063215-cd35f41e8f69
+	github.com/sagernet/sing-openconnect v0.1.1-0.20261119020037-0dad74dcc5e1
 	github.com/samber/lo v1.53.0
 	github.com/sirupsen/logrus v1.9.4
 	github.com/stretchr/testify v1.12.1

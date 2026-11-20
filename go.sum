@@ -244,8 +244,8 @@ github.com/sagernet/netlink v0.0.0-20240612041022-b9a21c07ac6a h1:ObwtHN2VpqE0ZN
 github.com/sagernet/netlink v0.0.0-20240612041022-b9a21c07ac6a/go.mod h1:xLnfdiJbSp8rNqYEdIW/6eDO4mVoogml14Bh2hSiFpM=
 github.com/sagernet/sing v0.8.12-0.20260702081104-2ded2af32d3d h1:BhsQU0Iug1tU4xR52cjm8Sc+LBo+KwdyLTRn3ie9moo=
 github.com/sagernet/sing v0.8.12-0.20260702081104-2ded2af32d3d/go.mod h1:olXxWQNqRW/l2Q6JI3b2Qmz8iQnIFlOeeH8bx6JhgUA=
-github.com/sagernet/sing-openconnect v0.1.1-0.20261110063215-cd35f41e8f69 h1:dlWGmhuBWQ+Eohw4SWyj3agnuAGH8XLBT6GfyhK76B4=
-github.com/sagernet/sing-openconnect v0.1.1-0.20261110063215-cd35f41e8f69/go.mod h1:4AKZLVcvY3r54UaK2Gbnm7aN8pOwdLz+y4EP0QFZ5Eg=
+github.com/sagernet/sing-openconnect v0.1.1-0.20261119020037-0dad74dcc5e1 h1:sgw1JLLn/RASRh6qrVpIaajOnz/9aO1UJcmxjPgDdTE=
+github.com/sagernet/sing-openconnect v0.1.1-0.20261119020037-0dad74dcc5e1/go.mod h1:4AKZLVcvY3r54UaK2Gbnm7aN8pOwdLz+y4EP0QFZ5Eg=
 github.com/samber/lo v1.53.0 h1:t975lj2py4kJPQ6haz1QMgtId2gtmfktACxIXArw3HM=
 github.com/samber/lo v1.53.0/go.mod h1:4+MXEGsJzbKGaUEQFKBq2xtfuznW9oz/WrgyzMzRoM0=
 github.com/sina-ghaderi/poly1305 v0.0.0-20220724002748-c5926b03988b h1:rXHg9GrUEtWZhEkrykicdND3VPjlVbYiLdX9J7gimS8=
