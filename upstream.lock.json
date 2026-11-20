@@ -11,7 +11,7 @@
   },
   "go": "1.27.3",
   "channel": "candidate",
-  "inputs_digest": "3d781bd32f0b0715eaee202d72d7813cc1768cd6875b46664a81ff20ba25ba43",
-  "adapter_commit": "52f07dd82c516f38b0da5559ac4570ceec8066df",
-  "release": "v1.19.34-oc.5"
+  "inputs_digest": "5d6918642850e942630e60f2ea66193c024dd832afa4c418e5582907307a4003",
+  "adapter_commit": "449dcbf14b1b7a26cb457e51085739eb77cdf0d3",
+  "release": "v1.19.34-oc.6"
 }
