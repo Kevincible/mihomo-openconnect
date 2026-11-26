@@ -5,13 +5,13 @@
     "commit": "0455d0d28c4526937380505153e65a843d8612e8"
   },
   "openconnect": {
-    "version": "v0.1.1-0.20261119020037-0dad74dcc5e1",
-    "commit": "0dad74dcc5e13ae6134ebe1bfdb996b84db65371",
+    "version": "v0.1.1-0.20261126032024-f641df2c35c6",
+    "commit": "f641df2c35c6395628ef7e0aeeebe9b36a08fa91",
     "branch": "main"
   },
   "go": "1.27.3",
   "channel": "candidate",
-  "inputs_digest": "5d6918642850e942630e60f2ea66193c024dd832afa4c418e5582907307a4003",
-  "adapter_commit": "449dcbf14b1b7a26cb457e51085739eb77cdf0d3",
-  "release": "v1.19.34-oc.6"
+  "inputs_digest": "81f3e9c32aa790bbdc86d2b7e43e08ca78cdf64cc06f2e435e85088f2a8199a5",
+  "adapter_commit": "7042bae15a872ad40ad6d24e285406ba3fbf3f5f",
+  "release": "v1.19.34-oc.7"
 }
